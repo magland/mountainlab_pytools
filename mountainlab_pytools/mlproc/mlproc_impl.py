@@ -123,7 +123,7 @@ class _MLProcessor:
         if self._package_uri:
             cmd='{} --package_uri={}'.format(cmd,self._package_uri)
         cmd=cmd+' --inputs'
-        input_names=inputs.keys()
+        input_names=sorted(inputs.keys())
         for iname in input_names:
             val=inputs[iname]
             if isinstance(val,(list,tuple)):
@@ -134,24 +134,25 @@ class _MLProcessor:
                 path0=self._get_path_for_input(iname,val)
                 cmd=cmd+' {}:{}'.format(iname,path0)
         cmd=cmd+' --parameters'
-        parameter_names=parameters.keys()
+        parameter_names=sorted(parameters.keys())
         for pname in parameter_names:
             val=parameters[pname]
             cmd=cmd+' {}:{}'.format(pname,val)
-        opt_names=opts.keys()
-        for optname in opt_names:
-            val=opts[optname]
-            cmd=cmd+' --{}={}'.format(optname,val)
         process_signature=self._get_signature_from_cmd(cmd)
+        
         cmd=cmd+' --outputs'
         output_paths={}
-        output_names=outputs.keys()
+        output_names=sorted(outputs.keys())
         for oname in output_names:
             val=outputs[oname]
             path0=self._create_path_for_output(oname,val,process_signature)
             output_paths[oname]=path0
             cmd=cmd+' {}:{}'.format(oname,path0)
-        print ('RUNNING:::::: '+cmd)
+        opt_names=sorted(opts.keys())
+        for optname in opt_names:
+            val=opts[optname]
+            cmd=cmd+' --{}={}'.format(optname,val)
+        print ('RUNNING: '+cmd)
         #process = Popen(shlex.split(cmd), stdout=PIPE)
         #process.communicate()
         #exit_code = process.wait()

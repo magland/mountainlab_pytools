@@ -2,7 +2,6 @@ import os
 import json
 import shlex
 import subprocess
-from mltools import mlstudy as mls
 import hashlib
 
 class _MLProcessorPIO: #parameter, input, or output
@@ -139,7 +138,7 @@ class _MLProcessor:
             val=parameters[pname]
             cmd=cmd+' {}:{}'.format(pname,val)
         process_signature=self._get_signature_from_cmd(cmd)
-        
+
         cmd=cmd+' --outputs'
         output_paths={}
         output_names=sorted(outputs.keys())
@@ -177,7 +176,7 @@ class _MLProcessor:
     def _get_path_for_input(self,iname,val):
         if (type(val)==str):
             return val
-        return mls.getFilePath(val)
+        return locateFile(val)
 
     def _get_signature_from_cmd(self,cmd):
         return hashlib.sha1(cmd.encode()).hexdigest()
@@ -212,6 +211,9 @@ def spec(processor_name,package_uri='',**kwargs):
 
 def locateFile(X,local=True,remote=True,download=False):
     if type(X)==str:
+        if os.path.exists(X):
+            if not X.endswith('.prv'):
+                return X
         opts=''
         if local:
             opts=opts+'--local '

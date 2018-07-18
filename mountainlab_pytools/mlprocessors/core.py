@@ -1,5 +1,5 @@
-from mlprocessors import validators
-from mlprocessors.validators import FileExistsValidator
+from . import validators
+from .validators import FileExistsValidator, ValidationError
 
 from functools import lru_cache
 import argparse
@@ -39,12 +39,22 @@ class Parameter():
         self.choices = list(kwargs['choices']) if 'choices' in kwargs else []
         self.validators = kwargs.get('validators', [])
 
+    def clean(self, value):
+        try:
+            return self.datatype(value)
+        except:
+            return value
+
     @property
     def spec(self):
-      dt = self.datatype.__name__
+      if isinstance(self.datatype, tuple):
+          dt = "{major}<{minor}>".format(major = self.datatype[0].__name__, minor = self.datatype[1].__name__)
+      else:
+        dt = self.datatype.__name__
       if dt == 'str': dt = 'string'
       s = { 'name': self.name, 'description': self.description, 'datatype': dt, 'optional': self.optional }
-      s['default_value'] = self.default
+      if self.optional or self.default:
+          s['default_value'] = str(self.default)
       return s
 
 class StringParameter(Parameter):
@@ -52,7 +62,6 @@ class StringParameter(Parameter):
         if not 'description' in kwargs:
             kwargs['description'] = description
         super().__init__(**kwargs)
-        self.default = kwargs.get('default', '')
         self.datatype = str
         if 'regex' in kwargs:
           self.validators.append(validators.RegexValidator(kwargs['regex']))
@@ -66,15 +75,29 @@ class ArithmeticParameter(Parameter):
 class IntegerParameter(ArithmeticParameter):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.default = kwargs.get('default', 0)
         self.datatype = int
 
 class FloatParameter(ArithmeticParameter):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.default = kwargs.get('default', 0.0)
         self.datatype = float
 
+class IntegerListParameter(StringParameter):
+    def __init__(self, description='', **kwargs):
+        super().__init__(description, **kwargs)
+        self.datatype = (list, int)
+
+        def validate(value):
+            vals = value.split(',')
+            try:
+                intvals = [ int(x) for x in vals ]
+            except:
+                raise ValidationError("Input data incorrect")
+        self.validators.append(validate)
+    def clean(self, value):
+        vals = value.split(',')
+        if not vals: return []
+        return [ int(x) for x in vals ]
 
 class ProcMeta(type):
     """
@@ -128,6 +151,8 @@ class ProcMeta(type):
           new_class.OUTPUTS.append(attrs[attr])
         if isinstance(attrs[attr], Parameter):
           attrs[attr].name = attr
+          if attrs[attr].default is not None and not attrs[attr].optional:
+              raise Exception("{}: Can't have a non-optional parameter with a default value".format(attr))
           new_class.PARAMETERS.append(attrs[attr])
 
       return new_class
@@ -245,7 +270,6 @@ class Processor(metaclass=ProcMeta):
             for param in proc.PARAMETERS:
                 if hasattr(opts, param.name) and getattr(opts, param.name) is not None:
                     # validate if needed
-                    print("Validating", param.name, getattr(opts, param.name))
                     for validator in param.validators:
                         validator(getattr(opts, param.name))
                     kwargs[param.name] = getattr(opts, param.name)

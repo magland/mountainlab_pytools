@@ -78,17 +78,46 @@ class _MLProcessor:
                 return _MLProcessorPIO(parameter0)
         raise Exception('Parameter not found in spec: {}'.format(name))
 
+    def _print_color(self,col,txt):
+        # terminal color codes
+        ccc = {
+            "Reset": "\x1b[0m",
+            "Bright": "\x1b[1m",
+            "Dim": "\x1b[2m",
+            "Underscore": "\x1b[4m",
+            "Blink": "\x1b[5m",
+            "Reverse": "\x1b[7m",
+            "Hidden": "\x1b[8m",
+            "FgBlack": "\x1b[30m",
+            "FgRed": "\x1b[31m",
+            "FgGreen": "\x1b[32m",
+            "FgYellow": "\x1b[33m",
+            "FgBlue": "\x1b[34m",
+            "FgMagenta": "\x1b[35m",
+            "FgCyan": "\x1b[36m",
+            "FgWhite": "\x1b[37m",
+            "BgBlack": "\x1b[40m",
+            "BgRed": "\x1b[41m",
+            "BgGreen": "\x1b[42m",
+            "BgYellow": "\x1b[43m",
+            "BgBlue": "\x1b[44m",
+            "BgMagenta": "\x1b[45m",
+            "BgCyan": "\x1b[46m",
+            "BgWhite": "\x1b[47m",
+        };
+        print(ccc[col]+txt+ccc['Reset'])
+
     def _run_command_and_print_output(self,command):
         with subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
             while True:
-                output = process.stderr.readline()
-                output2= process.stdout.readline()
-                if (not output) and (not output2) and (process.poll() is not None):
+                output_stdout= process.stdout.readline()
+                output_stderr = process.stderr.readline()
+                if (not output_stdout) and (not output_stderr) and (process.poll() is not None):
                     break
-                if output:
-                    print (output.strip().decode())
-                if output2:
-                    print (output2.strip().decode())
+                if output_stdout:
+                    self._print_color ('FgBlue',output_stdout.strip().decode())
+                if output_stderr:
+                    self._print_color ('FgRed',output_stderr.strip().decode())
             rc = process.poll()
             return rc
 

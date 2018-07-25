@@ -4,6 +4,7 @@ import json
 
 import os
 import traceback
+import argparse
 
 class ProcessorRegistry:
     def __init__(self, processors = []):
@@ -47,13 +48,26 @@ class ProcessorRegistry:
             print("----------------------------------------------")
 
     def process(self, args):
-      opcode = args[1]
+      parser = argparse.ArgumentParser(prog=args[0])
+      subparsers = parser.add_subparsers(dest='command', help='main help')
+      parser_spec = subparsers.add_parser('spec', help='spec help')
+
+      parser_test = subparsers.add_parser('test', help='test help')
+      parser_test.add_argument('processor')
+      parser_test.add_argument('args', nargs=argparse.REMAINDER)
+
+      opts = parser.parse_args(args[1:])
+
+      opcode = opts.command
+      if not opcode:
+          parser.print_usage()
+          return
       if opcode == 'spec':
           print(json.dumps(self.spec(), sort_keys = True, indent=4))
           return
       if opcode == 'test':
           try:
-            self.test(args[2:], trace=os.getenv('TRACEBACK', False) not in [ '0', 0, 'False', 'F', False ])
+            self.test([opts.processor]+opts.args, trace=os.getenv('TRACEBACK', False) not in [ '0', 0, 'False', 'F', False ])
           except KeyError as e:
             # taking __str__ from Base to prevent adding quotes to KeyError
             print(BaseException.__str__(e))

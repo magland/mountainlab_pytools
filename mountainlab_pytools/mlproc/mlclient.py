@@ -2,9 +2,15 @@ import time
 from subprocess import Popen, PIPE
 import random
 import traceback
+import os
 
 class MLClient:
     def __init__(self):
+        self._jobs={}
+        self._temporary_files_to_cleanup=[]
+
+    def clearJobs(self):
+        self.stop_all_processes()
         self._jobs={}
     
     def addProcess(self, processor_name, inputs=None, outputs=None, parameters=None, opts=None):
@@ -23,6 +29,12 @@ class MLClient:
             parameters={}
         if not opts:
             opts={}
+        for okey in outputs:
+          val=outputs[okey]
+          if val is True:
+            tmpfile='tmp.'+processor_name+'.'+okey+'.'+self.make_random_id(10)+'.prv'
+            outputs[okey]=tmpfile
+            self._temporary_files_to_cleanup.append(tmpfile)
         job_id = self.make_random_id(10)
         JJ={
             'id':job_id,
@@ -36,6 +48,9 @@ class MLClient:
         JJ['output_files']=self.flatten_iops(outputs)
         JJ['status']='pending'
         self._jobs[job_id]=JJ
+        return {
+          'outputs':outputs
+        }
         
     def run(self):
         try:
@@ -72,7 +87,8 @@ class MLClient:
                 if status_string != last_status_string:
                     print (status_string)
                 if (num_running == 0) and (num_pending == 0):
-                   return True 
+                    self.cleanup()
+                    return True 
                 if (num_running == 0) and (num_pending > 0):
                     raise Exception('Error running pipeline. Are there cyclic dependencies?')
                 time.sleep(2)
@@ -84,7 +100,15 @@ class MLClient:
                 if job['status']=='pending':
                     job['status']='canceled'
             self.stop_all_processes()
+            self.cleanup()
             raise e
+
+    def cleanup(self):
+        for j in range(len(self._temporary_files_to_cleanup)):
+          fname=self._temporary_files_to_cleanup[j]
+          if os.path.isfile(fname):
+            os.remove(fname)
+        self._temporary_files_to_cleanup=[]
     
     def start_job(self, job):
         job['status']='running'

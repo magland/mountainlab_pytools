@@ -4,6 +4,18 @@ import shlex
 import subprocess
 import hashlib
 from IPython.core.display import display, HTML
+from .mlclient import MLClient
+
+global_client=MLClient()
+
+def initPipeline():
+    global_client.clearJobs()
+
+def addProcess(processor_name, inputs=None, outputs=None, parameters=None, opts=None):
+    return global_client.addProcess(processor_name,inputs,outputs,parameters,opts)
+
+def runPipeline():
+    global_client.run()
 
 class _MLProcessorPIO: #parameter, input, or output
     def __init__(self,obj):

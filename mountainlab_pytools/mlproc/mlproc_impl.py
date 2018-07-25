@@ -3,6 +3,7 @@ import json
 import shlex
 import subprocess
 import hashlib
+from IPython.core.display import display, HTML
 
 class _MLProcessorPIO: #parameter, input, or output
     def __init__(self,obj):
@@ -23,6 +24,7 @@ class _MLProcessor:
         self._spec=None
         self._mlconfig=None
     def spec(self):
+
         if not self._spec:
             cmd='ml-spec {}'.format(self._processor_name)
             if self._package_uri:
@@ -30,7 +32,11 @@ class _MLProcessor:
             with os.popen(cmd) as pp:
                 output=pp.read()
             #output=os.popen(cmd).read()
-            obj=json.loads(output)
+            try:
+                obj=json.loads(output)
+            except:
+                print ('Unable to get spec for processor: {}'.format(self._processor_name))
+                return None
             self._spec=obj
         return self._spec
     def name(self):
@@ -105,7 +111,7 @@ class _MLProcessor:
             "BgCyan": "\x1b[46m",
             "BgWhite": "\x1b[47m",
         };
-        print(ccc[col]+txt+ccc['Reset'])
+        print (ccc[col]+txt+ccc['Reset'])
 
     def _run_command_and_print_output(self,command):
         with subprocess.Popen(shlex.split(command), stdout=subprocess.PIPE, stderr=subprocess.PIPE) as process:
@@ -179,8 +185,16 @@ class _MLProcessor:
         opt_names=sorted(opts.keys())
         for optname in opt_names:
             val=opts[optname]
-            cmd=cmd+' --{}={}'.format(optname,val)
-        print ('RUNNING: '+cmd)
+            if val is True:
+                cmd=cmd+' --{}'.format(optname)
+            elif val is False:
+                cmd=cmd+''
+            else:
+                cmd=cmd+' --{}={}'.format(optname,val)
+        if opts.get('verbose','') == 'jupyter':
+            display(HTML('<span class=ml_job processor_name="{}">JOB({})</span>'.format(self.name,self.name)));
+        else:
+            print ('RUNNING: '+cmd)
         #process = Popen(shlex.split(cmd), stdout=PIPE)
         #process.communicate()
         #exit_code = process.wait()
@@ -231,23 +245,19 @@ def queueProcess(processor_name,inputs={},outputs={},parameters={},opts={}):
 def runProcess(processor_name,inputs={},outputs={},parameters={},opts={}):
     P=_MLProcessor(processor_name)
     if not P.spec():
-        raise Exception('Unable to find processor: {} {}'.format(processor_name,package_uri))
+        raise Exception('Unable to find processor:::: {}'.format(processor_name))
     return P.run(inputs,outputs,parameters,opts)
 
 def spec(processor_name,package_uri='',**kwargs):
     P=_MLProcessor(processor_name,package_uri=package_uri)
     return P.spec()
 
-def locateFile(X,local=True,remote=True,download=False):
+def locateFile(X,download=False):
     if type(X)==str:
         if os.path.exists(X):
             if not X.endswith('.prv'):
                 return X
         opts=''
-        if local:
-            opts=opts+'--local '
-        if remote:
-            opts=opts+'--remote '
         if download:
             opts=opts+'--download '
         path=os.popen('ml-prv-locate {} {}'.format(X,opts)).read().strip()

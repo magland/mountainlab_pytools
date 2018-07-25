@@ -153,11 +153,15 @@ class MLClient:
       ret = {}
       for key in X:
         val = X[key]
-        if type(val) != dict:
-          ret[val] = True
-        else:
+        if type(val) == list:
+          for i in range(len(val)):
+            ret[val[i]]=True
+        elif type(val) == dict:
           for i in val:
             ret[val[i]]=True
+        else:
+          ret[val] = True
+          
       return ret
 
     def start_child_process(self,cmd):
@@ -192,11 +196,11 @@ class MLClient:
       ret = []
       for key in iops:
         val = iops[key]
-        if (type(val) != dict):
-          ret.append('{}:{}'.format(key,val))
-        else:
-          for i in val:
+        if (type(val) == list):
+          for i in range(len(val)):
             ret.append('{}:{}'.format(key,val[i]))
+        else:
+          ret.append('{}:{}'.format(key,val))
       return ret
 
     def stop_all_processes(self):

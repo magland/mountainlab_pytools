@@ -6,9 +6,17 @@ import os
 import traceback
 import argparse
 
+
+# TODO: Ability to define processor namespace in ProcessorRegistry
+
 class ProcessorRegistry:
-    def __init__(self, processors = []):
+    def __init__(self, processors = [], namespace = None):
       self.processors = processors
+      self.namespace = namespace
+      if namespace:
+          for proc in self.processors:
+              proc.NAME = "{}.{}".format(namespace, proc.NAME)
+              proc.NAMESPACE = namespace
 
     def spec(self):
       s = {}
@@ -51,10 +59,14 @@ class ProcessorRegistry:
       parser = argparse.ArgumentParser(prog=args[0])
       subparsers = parser.add_subparsers(dest='command', help='main help')
       parser_spec = subparsers.add_parser('spec', help='spec help')
+      parser_spec.add_argument('processor', nargs='?')
 
       parser_test = subparsers.add_parser('test', help='test help')
       parser_test.add_argument('processor')
       parser_test.add_argument('args', nargs=argparse.REMAINDER)
+
+      for proc in self.processors:
+          p = proc.invoke_parser(subparsers)
 
       opts = parser.parse_args(args[1:])
 
@@ -63,6 +75,13 @@ class ProcessorRegistry:
           parser.print_usage()
           return
       if opcode == 'spec':
+          if opts.processor:
+              try:
+                proc = self.get_processor_by_name(opts.processor)
+                print(json.dumps(proc.spec(), sort_keys = True, indent=4))
+              except:
+                print("Processor {} not found".format(opts.processor))
+              return
           print(json.dumps(self.spec(), sort_keys = True, indent=4))
           return
       if opcode == 'test':
@@ -83,9 +102,15 @@ class ProcessorRegistry:
     def invoke(self, proc, args):
         proc.invoke(args)
 
+    def register(self, proc):
+        if self.namespace and not proc.NAMESPACE:
+            proc.NAME = "{}.{}".format(self.namespace, proc.NAME)
+            proc.NAMESPACE=self.namespace
+        self.processors.append(proc)
+
 def register_processor(registry):
     def decor(cls):
-      registry.processors.append(cls)
+      registry.register(cls)
       return cls
     return decor
 

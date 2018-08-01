@@ -7,7 +7,7 @@ import sys
 import traceback
 
 class Input():
-    def __init__(self, description = None, optional = False, multi = False, validators = None):
+    def __init__(self, description = None, optional = False, multi = False, validators = None, *args, **kwargs):
         self.description = description
         self.optional = optional
         self.multi = multi
@@ -15,20 +15,55 @@ class Input():
         self.validators.append(FileExistsValidator())
         # self.formats = []
 
+    def prepare(self, arg):
+        pass
+
     @property
     def spec(self):
       return { 'name': self.name, 'description': self.description, 'optional': self.optional }
 
 
 class Output():
-    def __init__(self, description = None, optional = False, validators = None):
+    def __init__(self, description = None, optional = False, multi = False, validators = None, *args, **kwargs):
         self.description = description
         self.optional = optional
+        self.multi = multi
         self.validators = validators or []
+
+    def prepare(self, arg):
+        pass
 
     @property
     def spec(self):
       return { 'name': self.name, 'description': self.description, 'optional': self.optional }
+
+
+class StreamInput(Input):
+    """
+      Processor input that preps the file for reading
+    """
+
+    mode = 'rb'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'mode' in kwargs: self.mode = kwargs['mode']
+
+    def prepare(self, arg):
+        return open(arg, self.mode)
+
+class StreamOutput(Output):
+    """
+        Processor output that preps the file for writing
+    """
+    mode = 'wb'
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'mode' in kwargs: self.mode = kwargs['mode']
+
+    def prepare(self, arg):
+        return open(arg, self.mode)
 
 class Parameter():
     def __init__(self, **kwargs):
@@ -36,8 +71,12 @@ class Parameter():
         self.description = kwargs.get('description', '')
         self.optional = kwargs.get('optional', False)
         self.multi = kwargs.get('multi', False)
-        self.choices = list(kwargs['choices']) if 'choices' in kwargs else []
+        self.choices = kwargs['choices'] if 'choices' in kwargs else []
         self.validators = kwargs.get('validators', [])
+
+    def __repr__(self):
+        if hasattr(self, 'name'): return self.name
+        return super().__repr__()
 
     def clean(self, value):
         try:
@@ -56,6 +95,18 @@ class Parameter():
       if self.optional or self.default:
           s['default_value'] = str(self.default)
       return s
+
+class BoolParameter(Parameter):
+    def __init__(self, description = '', **kwargs):
+        if not 'description' in kwargs:
+            kwargs['description'] = description
+        super().__init__(**kwargs)
+        self.datatype = bool
+        if not 'choices' in kwargs: self.choices = [ True, False ]
+
+    def clean(self, value):
+        if value == 'True' or value == 'true' or value == '1': return True
+        return False
 
 class StringParameter(Parameter):
     def __init__(self, description = '', **kwargs):
@@ -115,6 +166,13 @@ class ProcMeta(type):
     """
     def __new__(cls, name, bases, attrs, **kwargs):
       super_new = super().__new__
+
+      parents = [b for b in bases if isinstance(b, ProcMeta)]
+      # don't process Processor
+      if not parents:
+          return super_new(cls, name, bases, attrs)
+
+      # todo: remove detected ins,outs,params from attrs
       new_class = super_new(cls, name, bases, attrs, **kwargs)
       name_components = []
       if 'NAMESPACE' in attrs and attrs['NAMESPACE']: name_components.append(attrs['NAMESPACE'])
@@ -138,9 +196,16 @@ class ProcMeta(type):
           new_class.DESCRIPTION = '{} MountainLab processor'.format(new_class.NAME)
 
       new_class.__doc__ = new_class.DESCRIPTION
-      new_class.INPUTS = []
-      new_class.OUTPUTS = []
-      new_class.PARAMETERS = []
+      # inherit from parent
+      if not hasattr(new_class, 'INPUTS'):
+        new_class.INPUTS = []
+      else: new_class.INPUTS = new_class.INPUTS.copy()
+      if not hasattr(new_class, 'OUTPUTS'):
+        new_class.OUTPUTS = []
+      else: new_class.OUTPUTS = new_class.OUTPUTS.copy()
+      if not hasattr(new_class, 'PARAMETERS'):
+        new_class.PARAMETERS = []
+      else: new_class.PARAMETERS = new_class.PARAMETERS.copy()
 
       for attr in attrs:
         if isinstance(attrs[attr],  Input):
@@ -163,6 +228,7 @@ class Processor(metaclass=ProcMeta):
     VERSION = None
     DESCRIPTION = None
     COMMAND = None
+    USE_ARGUMENTS = True
 
     @classmethod
     def _init(cls, self, *args, **kwargs):
@@ -193,7 +259,9 @@ class Processor(metaclass=ProcMeta):
         pspec['version'] = self.VERSION
         pspec['description'] = self.DESCRIPTION
         #if hasattr(self, 'run') and callable(self.run):
-        pspec['exe_command'] = self.COMMAND or ' '.join([sys.argv[0], self.NAME, '$(arguments)'])
+        components = [sys.argv[0], self.NAME]
+        if self.USE_ARGUMENTS: components.append('$(arguments)')
+        pspec['exe_command'] = self.COMMAND or ' '.join(components)
 
         pspec['inputs'] = [ inp.spec for inp in self.INPUTS ]
         pspec['outputs'] = [ out.spec for out in self.OUTPUTS ]
@@ -204,11 +272,14 @@ class Processor(metaclass=ProcMeta):
         return pspec
 
     @classmethod
-    def invoke_parser(self):
+    def invoke_parser(self, supparser=None):
         """
             Creates a commandline parser for the processo
         """
-        parser = argparse.ArgumentParser(prog=self.NAME, description=self.DESCRIPTION)
+        if supparser:
+            parser = supparser.add_parser(self.NAME, description=self.DESCRIPTION)
+        else:
+            parser = argparse.ArgumentParser(prog=self.NAME, description=self.DESCRIPTION)
         # populate parser with INPUTS
         for input in self.INPUTS:
             opts = {}
@@ -222,7 +293,7 @@ class Processor(metaclass=ProcMeta):
             opts = {}
             opts['help'] = output.description
             opts['required'] = not output.optional
-            #            if output.multi: opts['action'] = 'append'
+            if output.multi: opts['action'] = 'append'
             parser.add_argument('--'+output.name, **opts)
 
         # populate parser with PARAMETERS
@@ -230,12 +301,24 @@ class Processor(metaclass=ProcMeta):
             opts = {}
             opts['help'] = param.description
             opts['required'] = not param.optional
-            opts['type'] = param.datatype
+            if isinstance(param.datatype, tuple):
+                opts['type'] = str
+                #opts['type'] = param.datatype[1]
+            else:
+                opts['type'] = param.datatype
 
             if param.multi: opts['action'] = 'append'
             if param.choices:
-              opts['choices'] = param.choices
+                if isinstance(param.choices, tuple):
+                    # if choices is a tuple, assume it is a tuple of mappings
+                    # and expand them
+                    opts['choices'] = [ choice[0] for choice in param.choices ]
+                else:
+                    opts['choices'] = param.choices
             parser.add_argument('--'+param.name, **opts)
+
+        if self.USE_ARGUMENTS:
+            parser.add_argument('--_tempdir',required=False, help=argparse.SUPPRESS)
         return parser
 
     @classmethod
@@ -260,21 +343,50 @@ class Processor(metaclass=ProcMeta):
                         for validator in input.validators:
                             validator(inputelem)
                     if hasattr(opts, input.name):
-                        kwargs[input.name] = getattr(opts, input.name)
+                        prepared = input.prepare(getattr(opts, input.name)) or getattr(opts, input.name)
+                        kwargs[input.name] = prepared
             for output in proc.OUTPUTS:
-                if hasattr(opts, output.name) and getattr(opts, output.name) is not None:
-                    # validate if needed
-                    for validator in output.validators:
-                        validator(getattr(opts, output.name))
-                    kwargs[output.name] = getattr(opts, output.name)
+                outputname = output.name
+                if hasattr(opts, outputname) and getattr(opts, outputname) is not None:
+                    # for multi=True outputs, handle each input separately
+                    if isinstance(getattr(opts, outputname), list):
+                        outputlist = getattr(opts, outputname)
+                    else:
+                        outputlist = [ getattr(opts, outputname)]
+                    for outputelem in outputlist:
+                        # TODO: validate all fields instead of bailing out after first exception
+                        for validator in output.validators:
+                            validator(outputelem)
+                    if hasattr(opts, output.name):
+                        prepared = output.prepare(getattr(opts, output.name)) or getattr(opts, output.name)
+                        kwargs[output.name] = prepared
+                elif output.optional:
+                    kwargs[output.name] = None
+                else:
+                    raise AttributeError('Missing value for {} output'.format(outputname))
             for param in proc.PARAMETERS:
                 if hasattr(opts, param.name) and getattr(opts, param.name) is not None:
+                    value = getattr(opts, param.name)
                     # validate if needed
                     for validator in param.validators:
-                        validator(getattr(opts, param.name))
-                    kwargs[param.name] = getattr(opts, param.name)
+                        validator(value)
+                    # if param is a tuple of choices, each choice is a tuple itself
+                    # with first element of the input value and second element
+                    # containing the value to be passed to the processor
+                    if param.choices and isinstance(param.choices, tuple):
+                        for choice in param.choices:
+                            if choice[0] == value:
+                                kwargs[param.name] = choice[1]
+                                break
+                    else:
+                        kwargs[param.name] = value
+                elif param.optional:
+                    kwargs[param.name] = param.default
+                else:
+                    raise AttributeError('Missing value for {} parameter'.format(param.name))
             inst = proc(**kwargs)
             inst.run()
+            # todo: cleanup
         except Exception as e:
             print("Error:", e)
-#            traceback.print_exc()
+            #traceback.print_exc()

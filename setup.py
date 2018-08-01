@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="mountainlab_pytools",
-    version="0.3.0",
+    version="0.3.1",
     author="Jeremy Magland",
     author_email="jmagland@flatironinstitute.org",
     description="Tools for using MountainLab with python",
@@ -11,7 +11,8 @@ setuptools.setup(
     install_requires=[
         'requests',
         'numpy',
-        'numpydoc'
+        'numpydoc',
+	'ipython'
     ],
     classifiers=(
         "Programming Language :: Python :: 3",

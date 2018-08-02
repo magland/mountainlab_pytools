@@ -6,36 +6,30 @@ import argparse
 import sys
 import traceback
 
-class Input():
+class InOutBase():
     def __init__(self, description = None, optional = False, multi = False, validators = None, *args, **kwargs):
         self.description = description
         self.optional = optional
         self.multi = multi
         self.validators = validators or []
+
+    def prepare(self, arg):
+        pass
+
+    @property
+    def spec(self):
+      return { 'name': self.name, 'description': self.description, 'optional': self.optional }
+
+
+class Input(InOutBase):
+    def __init__(self, description = None, optional = False, multi = False, validators = None, *args, **kwargs):
+        super().__init__(description, optional, multi, validators, *args, **kwargs)
         self.validators.append(FileExistsValidator())
         # self.formats = []
 
-    def prepare(self, arg):
-        pass
-
-    @property
-    def spec(self):
-      return { 'name': self.name, 'description': self.description, 'optional': self.optional }
-
-
-class Output():
+class Output(InOutBase):
     def __init__(self, description = None, optional = False, multi = False, validators = None, *args, **kwargs):
-        self.description = description
-        self.optional = optional
-        self.multi = multi
-        self.validators = validators or []
-
-    def prepare(self, arg):
-        pass
-
-    @property
-    def spec(self):
-      return { 'name': self.name, 'description': self.description, 'optional': self.optional }
+        super().__init__(description, optional, multi, validators, *args, **kwargs)
 
 
 class StreamInput(Input):
@@ -118,19 +112,21 @@ class StringParameter(Parameter):
           self.validators.append(validators.RegexValidator(kwargs['regex']))
 
 class ArithmeticParameter(Parameter):
-    def __init__(self, **kwargs):
+    def __init__(self, description='', **kwargs):
+        if not 'description' in kwargs:
+            kwargs['description'] = description
         super().__init__(**kwargs)
         if 'min' in kwargs or 'max' in kwargs:
             self.validators.append(validators.ValueValidator(**kwargs))
 
 class IntegerParameter(ArithmeticParameter):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, description='', **kwargs):
+        super().__init__(description, **kwargs)
         self.datatype = int
 
 class FloatParameter(ArithmeticParameter):
-    def __init__(self, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, description='', **kwargs):
+        super().__init__(description, **kwargs)
         self.datatype = float
 
 class IntegerListParameter(StringParameter):
@@ -280,22 +276,20 @@ class Processor(metaclass=ProcMeta):
             parser = supparser.add_parser(self.NAME, description=self.DESCRIPTION)
         else:
             parser = argparse.ArgumentParser(prog=self.NAME, description=self.DESCRIPTION)
+
+
+        def populate_parser(parser, dataset):
+            for elem in dataset:
+                opts = {}
+                opts['help'] = elem.description
+                opts['required'] = not elem.optional
+                if elem.multi: opts['action'] = 'append'
+                parser.add_argument('--'+elem.name, **opts)
+
         # populate parser with INPUTS
-        for input in self.INPUTS:
-            opts = {}
-            opts['help'] = input.description
-            opts['required'] = not input.optional
-            if input.multi: opts['action'] = 'append'
-            parser.add_argument('--'+input.name, **opts)
-
+        populate_parser(parser, self.INPUTS)
         # populate parser with OUTPUTS
-        for output in self.OUTPUTS:
-            opts = {}
-            opts['help'] = output.description
-            opts['required'] = not output.optional
-            if output.multi: opts['action'] = 'append'
-            parser.add_argument('--'+output.name, **opts)
-
+        populate_parser(parser, self.OUTPUTS)
         # populate parser with PARAMETERS
         for param in self.PARAMETERS:
             opts = {}
@@ -329,43 +323,34 @@ class Processor(metaclass=ProcMeta):
         parser = proc.invoke_parser()
         opts = parser.parse_args(args)
         kwargs = {}
-        try:
-            for input in proc.INPUTS:
-                inputname = input.name
-                if hasattr(opts, inputname) and getattr(opts, inputname) is not None:
-                    # for multi=True inputs, handle each input separately
-                    if isinstance(getattr(opts, inputname), list):
-                        inputlist = getattr(opts, inputname)
+
+
+        def handle_set(opts, dataset, kwargs, canMulti = False):
+            for elem in dataset:
+                elemname = elem.name
+                # ml-run-process passes values for not provided inputs, outputs and params as empty strings ('')
+                if hasattr(opts, elemname) and getattr(opts, elemname) not in [None, '']:
+                    elemvalue = getattr(opts, elemname)
+                    if canMulti and isinstance(elemvalue, list):
+                        elemlist = elemvalue
                     else:
-                        inputlist = [ getattr(opts, inputname)]
-                    for inputelem in inputlist:
-                        # TODO: validate all fields instead of bailing out after first exception
-                        for validator in input.validators:
-                            validator(inputelem)
-                    if hasattr(opts, input.name):
-                        prepared = input.prepare(getattr(opts, input.name)) or getattr(opts, input.name)
-                        kwargs[input.name] = prepared
-            for output in proc.OUTPUTS:
-                outputname = output.name
-                if hasattr(opts, outputname) and getattr(opts, outputname) is not None:
-                    # for multi=True outputs, handle each input separately
-                    if isinstance(getattr(opts, outputname), list):
-                        outputlist = getattr(opts, outputname)
-                    else:
-                        outputlist = [ getattr(opts, outputname)]
-                    for outputelem in outputlist:
-                        # TODO: validate all fields instead of bailing out after first exception
-                        for validator in output.validators:
-                            validator(outputelem)
-                    if hasattr(opts, output.name):
-                        prepared = output.prepare(getattr(opts, output.name)) or getattr(opts, output.name)
-                        kwargs[output.name] = prepared
-                elif output.optional:
-                    kwargs[output.name] = None
+                        elemlist = [ elemvalue ]
+                    for elemelem in elemlist:
+                        for validator in elem.validators: validator(elemelem)
+                    if hasattr(opts, elem.name):
+                        prepared = elem.prepare(elemvalue) or elemvalue
+                        kwargs[elem.name] = prepared
+                elif elem.optional:
+                    kwargs[elem.name] = None
                 else:
-                    raise AttributeError('Missing value for {} output'.format(outputname))
+                    raise AttributeError('Missing value for {} '.format(elemname))
+
+        try:
+            handle_set(opts, proc.INPUTS, kwargs, True)
+            handle_set(opts, proc.OUTPUTS, kwargs, True)
+
             for param in proc.PARAMETERS:
-                if hasattr(opts, param.name) and getattr(opts, param.name) is not None:
+                if hasattr(opts, param.name) and getattr(opts, param.name) is not None and getattr(opts, param.name) is not '':
                     value = getattr(opts, param.name)
                     # validate if needed
                     for validator in param.validators:
@@ -389,4 +374,4 @@ class Processor(metaclass=ProcMeta):
             # todo: cleanup
         except Exception as e:
             print("Error:", e)
-            #traceback.print_exc()
+            traceback.print_exc()

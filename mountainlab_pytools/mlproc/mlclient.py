@@ -298,9 +298,11 @@ class MLClient:
     
     def start_job(self, job):
         job['status']='running'
+
         inputs_list=self.create_args_list(job['inputs'])
         outputs_list=self.create_args_list(job['outputs'])
         params_list=self.create_args_list(job['parameters'])
+
         opts_list=[]
         for key in job['opts']:
           val=job['opts'][key]
@@ -406,7 +408,7 @@ class MLClient:
           for i in range(len(val)):
             ret.append('{}:{}'.format(key,val[i]))
         else:
-          ret.append('{}:{}'.format(key,val))
+            ret.append('{}:{}'.format(key,val))
       return ret
 
     def stop_all_processes(self):

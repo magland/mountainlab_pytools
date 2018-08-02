@@ -374,5 +374,5 @@ class Processor(metaclass=ProcMeta):
             # todo: cleanup
         except Exception as e:
             print("Error:", e)
-            traceback.print_exc()
+#            traceback.print_exc()
             raise

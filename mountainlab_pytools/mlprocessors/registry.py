@@ -91,15 +91,16 @@ class ProcessorRegistry:
           finally:
             return
       if opcode in [ x.NAME for x in self.processors ]:
-          self.invoke(self.get_processor_by_name(opcode), args[2:])
+          try:
+            self.invoke(self.get_processor_by_name(opcode), args[2:])
+          except:
+            import sys
+            sys.exit(-1)
       else:
           print("Processor {} not found".format(opcode))
 
     def invoke(self, proc, args):
-        try:
-            return proc.invoke(args)
-        except:
-            pass # ignore the exception
+        return proc.invoke(args)
 
     def register(self, proc):
         if self.namespace and not proc.NAMESPACE:

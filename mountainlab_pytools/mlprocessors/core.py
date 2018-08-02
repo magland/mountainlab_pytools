@@ -173,7 +173,7 @@ class ProcMeta(type):
       name_components = []
       if 'NAMESPACE' in attrs and attrs['NAMESPACE']: name_components.append(attrs['NAMESPACE'])
       if 'NAME' in attrs and attrs['NAME']:
-        name_components.append(attr['NAME'])
+        name_components.append(attrs['NAME'])
       else:
         name_components.append(name)
       new_class.NAME = '.'.join(name_components)

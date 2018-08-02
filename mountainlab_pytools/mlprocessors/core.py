@@ -370,9 +370,9 @@ class Processor(metaclass=ProcMeta):
                 else:
                     raise AttributeError('Missing value for {} parameter'.format(param.name))
             inst = proc(**kwargs)
-            inst.run()
+            return inst.run()
             # todo: cleanup
         except Exception as e:
             print("Error:", e)
             traceback.print_exc()
-            raise e
+            raise

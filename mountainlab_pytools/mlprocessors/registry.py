@@ -96,7 +96,10 @@ class ProcessorRegistry:
           print("Processor {} not found".format(opcode))
 
     def invoke(self, proc, args):
-        proc.invoke(args)
+        try:
+            return proc.invoke(args)
+        except:
+            pass # ignore the exception
 
     def register(self, proc):
         if self.namespace and not proc.NAMESPACE:

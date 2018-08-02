@@ -13,7 +13,8 @@ setuptools.setup(
         'numpy',
         'numpydoc',
 	'ipython',
-	'vdom'
+	'vdom',
+	'ipywidgets'
     ],
     classifiers=(
         "Programming Language :: Python :: 3",

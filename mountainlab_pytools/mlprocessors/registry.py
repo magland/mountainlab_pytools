@@ -7,8 +7,6 @@ import traceback
 import argparse
 
 
-# TODO: Ability to define processor namespace in ProcessorRegistry
-
 class ProcessorRegistry:
     def __init__(self, processors = [], namespace = None):
       self.processors = processors
@@ -27,10 +25,8 @@ class ProcessorRegistry:
         for P in self.processors:
             for key in kwargs:
                 if not hasattr(P, key):
-                    #print(key, "not in P")
                     continue
                 if getattr(P, key) != kwargs[key]:
-                    #print(getattr(P, key), "doesn't match", kwargs[key])
                     continue
                 return P
 
@@ -58,15 +54,15 @@ class ProcessorRegistry:
     def process(self, args):
       parser = argparse.ArgumentParser(prog=args[0])
       subparsers = parser.add_subparsers(dest='command', help='main help')
-      parser_spec = subparsers.add_parser('spec', help='spec help')
+      parser_spec = subparsers.add_parser('spec', help='Print processor specs')
       parser_spec.add_argument('processor', nargs='?')
 
-      parser_test = subparsers.add_parser('test', help='test help')
+      parser_test = subparsers.add_parser('test', help='Run processor tests')
       parser_test.add_argument('processor')
       parser_test.add_argument('args', nargs=argparse.REMAINDER)
 
       for proc in self.processors:
-          p = proc.invoke_parser(subparsers)
+          proc.invoke_parser(subparsers)
 
       opts = parser.parse_args(args[1:])
 
@@ -97,7 +93,7 @@ class ProcessorRegistry:
       if opcode in [ x.NAME for x in self.processors ]:
           self.invoke(self.get_processor_by_name(opcode), args[2:])
       else:
-        print("Processor {} not found".format(opcode))
+          print("Processor {} not found".format(opcode))
 
     def invoke(self, proc, args):
         proc.invoke(args)

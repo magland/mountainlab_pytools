@@ -42,8 +42,8 @@ class FileExtensionValidator(Validator):
 
     def validate(self, value):
         name, extension = os.path.splitext(value)
-        if self.extensions is not None and extensions not in self.extensions:
-            raise ValidationError('File extension is not allowed')
+        if self.extensions is not None and extension not in self.extensions:
+            raise ValidationError('File extension {} is not allowed'.format(extension))
 
 class FileExistsValidator(Validator):
     def __init__(self, *args, **kwargs):

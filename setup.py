@@ -12,7 +12,8 @@ setuptools.setup(
         'requests',
         'numpy',
         'numpydoc',
-	'ipython'
+	'ipython',
+	'vdom'
     ],
     classifiers=(
         "Programming Language :: Python :: 3",

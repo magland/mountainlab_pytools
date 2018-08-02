@@ -369,6 +369,8 @@ class MLClient:
                 self._handle_process_output(P,job)
             else:
                 job['status']='error'
+                self._handle_process_output(P,job)
+                print(job['console_output'])
                 job['error']='Process returned with non-zero error code ({})'.format(retcode)
             job['child_process']=None
             self._update_job_widget(job['id'])

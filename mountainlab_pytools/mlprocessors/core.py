@@ -173,7 +173,7 @@ class ProcMeta(type):
       name_components = []
       if 'NAMESPACE' in attrs and attrs['NAMESPACE']: name_components.append(attrs['NAMESPACE'])
       if 'NAME' in attrs and attrs['NAME']:
-        name_components.append(attr['NAME'])
+        name_components.append(attrs['NAME'])
       else:
         name_components.append(name)
       new_class.NAME = '.'.join(name_components)
@@ -370,9 +370,9 @@ class Processor(metaclass=ProcMeta):
                 else:
                     raise AttributeError('Missing value for {} parameter'.format(param.name))
             inst = proc(**kwargs)
-            inst.run()
+            return inst.run()
             # todo: cleanup
         except Exception as e:
             print("Error:", e)
             traceback.print_exc()
-            raise e
+            raise

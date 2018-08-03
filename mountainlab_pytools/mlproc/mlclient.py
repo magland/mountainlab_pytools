@@ -43,7 +43,8 @@ class MLJobWidget():
             'parameters':{},
             'opts':{},
             'status':'',
-            'console_output':''
+            'console_output':'',
+            'command':''
         }
         self._dev_mode=False
         self._lari_info=None
@@ -70,6 +71,10 @@ class MLJobWidget():
             except Exception as e:
                 print('Warning: Problem reading json file: {}'.format(fname))
                 print(e)
+            try:
+                os.remove(fname)
+            except Exception as e:
+                pass
     
     def refresh(self):
         self._out.clear_output(wait=True)
@@ -85,26 +90,27 @@ class MLJobWidget():
 
         if href:
             link=vdom.a(
-                info['processor_name']+' ('+self._lari_info['lari_job_id']+')',
+                info['processor_name'],
                 href=href,
                 target='_blank'
             )
         else:
             link=info['processor_name']
             
-        A=vdom.table(
-            vdom.tr(
-                vdom.td(
-                    info['status'],style={'color':self._status_color(info['status'])}
-                ),
-                vdom.td(
-                    link
-                )
-            )
+
+        A=vdom.span(
+            vdom.span(info['status'],style={'color':self._status_color(info['status'])}),
+            ' ',
+            link
+        )
+        AA=vdom.details(
+            vdom.summary(A),
+            vdom.p(vdom.pre(info['command'])),
+            vdom.p(vdom.pre(info['console_output']))
         )
         
         with self._out:
-            display(A)
+            display(AA)
                     
     def _status_color(self,status):
         if status=='pending':
@@ -153,7 +159,8 @@ class MLClient:
             parameters=job['parameters'],
             opts=job['opts'],
             status=job['status'],
-            console_output=job['console_output']
+            console_output=job['console_output'],
+            command=job['command']
         )
     
     def addProcess(self, processor_name, inputs=None, outputs=None, parameters=None, opts=None):
@@ -172,16 +179,17 @@ class MLClient:
             parameters={}
         if not opts:
             opts={}
+        tmp_files_to_cleanup=[]
         for okey in outputs:
           val=outputs[okey]
           if val is True:
             tmpfile='tmp.'+processor_name+'.'+okey+'.'+self.make_random_id(10)+'.prv'
             outputs[okey]=tmpfile
-            self._temporary_files_to_cleanup.append(tmpfile)
+            #self._temporary_files_to_cleanup.append(tmpfile)
         opts2=copy.deepcopy(opts)
         tmp_lari_out_file='tmp.'+processor_name+'.lari_out.'+self.make_random_id(10)+'.json'
         opts2['lari_out']=tmp_lari_out_file
-        self._temporary_files_to_cleanup.append(tmp_lari_out_file)
+        #self._temporary_files_to_cleanup.append(tmp_lari_out_file)
         job_id = self.make_random_id(10)
         JJ={
             'id':job_id,
@@ -195,6 +203,7 @@ class MLClient:
         JJ['output_files']=self.flatten_iops(outputs)
         JJ['status']='pending'
         JJ['console_output']=''
+        JJ['command']=''
         W=MLJobWidget()
         W.setDevMode(self._dev_mode)
         JJ['widget']=W
@@ -242,7 +251,9 @@ class MLClient:
                     num_stopped = num_stopped + 1
             status_string='JOBS: pending:{} running:{} finished:{}'.format(num_pending,num_running,num_finished)
             if status_string != self._last_status_string:
-                print (status_string)
+                self._status_out.clear_output(wait=True)
+                with self._status_out:
+                    print (status_string)
             self._last_status_string=status_string
             if (num_running == 0) and (num_pending == 0):
                 self.cleanup()
@@ -273,6 +284,8 @@ class MLClient:
         #        self._job_monitor.refresh()
         #B.on_click(on_click)
         #display(B)
+        self._status_out=widgets.Output()
+        display(self._status_out)
         self._last_status_string=''
         
         while True:
@@ -290,6 +303,7 @@ class MLClient:
         Timer(1,do_run,()).start()
 
     def cleanup(self):
+        print('Cleaning up...')
         for j in range(len(self._temporary_files_to_cleanup)):
           fname=self._temporary_files_to_cleanup[j]
           if os.path.isfile(fname):
@@ -315,7 +329,7 @@ class MLClient:
               opts_list.append('--'+key+'='+val)
         mode=job['opts'].get('mode','run')
         cmd = 'ml-{}-process {} -i {} -o {} -p {} {}'.format(mode,job['processor_name'],' '.join(inputs_list),' '.join(outputs_list),' '.join(params_list),' '.join(opts_list))
-        print ('Running: {}'.format(cmd))
+        job['command']=cmd
         try:
             P=self.start_child_process(cmd)
             job['child_process']=P
@@ -370,7 +384,7 @@ class MLClient:
             else:
                 job['status']='error'
                 self._handle_process_output(P,job)
-                print(job['console_output'])
+                #print(job['console_output'])
                 job['error']='Process returned with non-zero error code ({})'.format(retcode)
             job['child_process']=None
             self._update_job_widget(job['id'])

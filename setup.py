@@ -12,9 +12,10 @@ setuptools.setup(
         'requests',
         'numpy',
         'numpydoc',
-	'ipython',
-	'vdom',
-	'ipywidgets'
+        'ipython',
+        'vdom',
+        'ipywidgets',
+        'jp_proxy_widget'
     ],
     classifiers=(
         "Programming Language :: Python :: 3",

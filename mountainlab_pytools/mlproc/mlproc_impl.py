@@ -26,6 +26,10 @@ def lariLogin(lari_id,lari_passcode=None):
 def initPipeline():
     client=MLClient()
     Global['current_client']=client
+    client.displayJobMonitor()
+
+def clearJobs():
+    Global['current_client'].clearJobs()
     
 def addProcess(processor_name, inputs=None, outputs=None, parameters=None, opts=None):
     return Global['current_client'].addProcess(processor_name,inputs,outputs,parameters,opts)

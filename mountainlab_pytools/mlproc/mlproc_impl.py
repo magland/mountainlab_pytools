@@ -15,7 +15,7 @@ Global={
 current_client=MLClient()
 
 def lariLogin(lari_id,lari_passcode=None):
-    if lari_passcode is None:
+    if (lari_passcode is None) and (lari_id):
         print('Enter processing passcode for lari node {}'.format(lari_id))
         lari_passcode=getpass.getpass()
     else:

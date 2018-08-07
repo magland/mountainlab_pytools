@@ -285,7 +285,7 @@ def spec(processor_name,package_uri='',**kwargs):
     P=_MLProcessor(processor_name,package_uri=package_uri)
     return P.spec()
 
-def locateFile(X,download=False):
+def locateFile(X,download=False,remote_only=False):
     if type(X)==str:
         if os.path.exists(X):
             if not X.endswith('.prv'):
@@ -293,12 +293,27 @@ def locateFile(X,download=False):
         opts=''
         if download:
             opts=opts+'--download '
+        if remote_only:
+            opts=opts+'--remote_only'
         path=os.popen('ml-prv-locate {} {}'.format(X,opts)).read().strip()
         if not path:
             raise Exception('Unable to locate file: {}'.format(X))
         return path
     else:
         raise Exception('Unexpected type in locateFile.')
+
+def kbucketPath(path):
+    if path.startswith('kbucket://'):
+        return path
+    if path.startswith('sha1://'):
+        return path
+    if path.endswith('.prv'):
+        with open(path,'r') as f:
+            obj=json.load(f)
+            return 'sha1://'+obj['original_checksum']
+    if (not os.path.exists(path)) and os.path.exists(path+'.prv'):
+        return kbucketPath(path+'.prv')
+    return None
         
 def realizeFile(X):
     return locateFile(X,download=True)

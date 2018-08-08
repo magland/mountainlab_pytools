@@ -2,12 +2,15 @@ import setuptools
 
 setuptools.setup(
     name="mountainlab_pytools",
-    version="0.6.0",
+    version="0.6.2",
     author="Jeremy Magland",
     author_email="jmagland@flatironinstitute.org",
     description="Tools for using MountainLab with python",
     url="https://github.com/magland/mountainlab_pytools",
     packages=setuptools.find_packages(),
+    package_data={
+        '': ['mlproc/*.js']
+    },
     install_requires=[
         'requests',
         'numpy',

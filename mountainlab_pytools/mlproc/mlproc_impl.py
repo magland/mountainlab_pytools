@@ -10,9 +10,8 @@ import ipywidgets as widgets
 import os, getpass
 
 Global={
-    'current_client':MLClient()
+    'current_client':None
 }
-current_client=MLClient()
 
 def lariLogin(lari_id,lari_passcode=None):
     if (lari_passcode is None) and (lari_id):
@@ -23,20 +22,41 @@ def lariLogin(lari_id,lari_passcode=None):
     os.environ['LARI_ID']=lari_id
     os.environ['LARI_PASSCODE']=lari_passcode
 
-def initPipeline():
-    client=MLClient()
-    Global['current_client']=client
-    client.displayJobMonitor()
+class _MLPipeline():
+    def __init__(self):
+        self._client=MLClient()
+        pass
+    def client(self):
+        return self._client
+    def __enter__(self):
+        self._client.clearJobs()
+        Global['current_client']=self._client
+    def __exit__(self, type, value, traceback):
+        self._client.run()
+        Global['current_client']=None
 
-def clearJobs():
-    Global['current_client'].clearJobs()
+
+def initPipeline():
+    P=_MLPipeline()
+    P.client().displayJobMonitor()
+    return P
+
+#def clearJobs():
+#    Global['current_client'].clearJobs()
     
 def addProcess(processor_name, inputs=None, outputs=None, parameters=None, opts=None):
     return Global['current_client'].addProcess(processor_name,inputs,outputs,parameters,opts)
+    #if not Global['current_client']:
+    #    return Global['current_client'].addProcess(processor_name,inputs,outputs,parameters,opts)
+    #else:
+    #   P=initPipeline()
+    #   with P:
+    #       return addProcess(processor_name,inputs,outputs,parameters,opts)
+    
 
-def runPipeline():
-    client=Global['current_client']
-    client.run()
+#def runPipeline():
+#    client=Global['current_client']
+#    client.run()
 
 class _MLProcessorPIO: #parameter, input, or output
     def __init__(self,obj):

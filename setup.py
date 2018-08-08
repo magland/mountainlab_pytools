@@ -2,7 +2,7 @@ import setuptools
 
 setuptools.setup(
     name="mountainlab_pytools",
-    version="0.5.2",
+    version="0.6.0",
     author="Jeremy Magland",
     author_email="jmagland@flatironinstitute.org",
     description="Tools for using MountainLab with python",

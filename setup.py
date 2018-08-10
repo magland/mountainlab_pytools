@@ -1,8 +1,10 @@
 import setuptools
 
+pkg_name="mountainlab_pytools"
+
 setuptools.setup(
-    name="mountainlab_pytools",
-    version="0.6.3",
+    name=pkg_name,
+    version="0.6.4",
     author="Jeremy Magland",
     author_email="jmagland@flatironinstitute.org",
     description="Tools for using MountainLab with python",
@@ -30,7 +32,6 @@ setuptools.setup(
         "build_script":[
             "python -m pip install vdom jp_proxy_widget",
             "python -m pip install --no-deps --ignore-installed .",
-            "CMD=\"ln -sf $SP_DIR/"+pkg_name+" `CONDA_PREFIX=$PREFIX ml-config package_directory`/"+pkg_name+"\"",
             "echo $CMD",
             "$CMD"
         ],

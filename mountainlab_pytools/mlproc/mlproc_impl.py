@@ -322,6 +322,11 @@ def locateFile(X,download=False,remote_only=False):
     else:
         raise Exception('Unexpected type in locateFile.')
 
+def readDir(path):
+    with os.popen('ml-read-dir {}'.format(path)) as pp:
+        txt=pp.read()
+        return json.loads(txt)
+
 def kbucketPath(path):
     if path.startswith('kbucket://'):
         return path

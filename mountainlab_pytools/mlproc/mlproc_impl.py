@@ -54,9 +54,9 @@ def addProcess(processor_name, inputs=None, outputs=None, parameters=None, opts=
     #       return addProcess(processor_name,inputs,outputs,parameters,opts)
     
 
-#def runPipeline():
-#    client=Global['current_client']
-#    client.run()
+def runPipeline():
+    client=Global['current_client']
+    client.run()
 
 class _MLProcessorPIO: #parameter, input, or output
     def __init__(self,obj):

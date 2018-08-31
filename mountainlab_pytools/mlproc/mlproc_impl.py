@@ -8,9 +8,11 @@ from .mlclient import MLClient
 from threading import Timer
 import ipywidgets as widgets
 import os, getpass
+from fnmatch import fnmatch
 
 Global={
-    'current_client':None
+    'current_client':None,
+    'container_rules':[]
 }
 
 def lariLogin(lari_id,lari_passcode=None):
@@ -41,10 +43,31 @@ def initPipeline():
     P.client().displayJobMonitor()
     return P
 
+def containerRules():
+    return Global['container_rules']
+
+def setContainerRules(rules):
+    Global['container_rules']=rules
+
+def addContainerRule(*,pattern,container):
+    Global['container_rules'].append(dict(pattern=pattern,container=container))
+
 #def clearJobs():
 #    Global['current_client'].clearJobs()
+
+def _get_container_for_processor_name(processor_name):
+    rules=Global['container_rules']
+    for rule in rules:
+        if fnmatch(processor_name,rule['pattern']):
+            return rule['container']
     
 def addProcess(processor_name, inputs=None, outputs=None, parameters=None, opts=None):
+    if not opts:
+        opts=dict()
+    if 'container' not in opts:
+        container=_get_container_for_processor_name(processor_name)
+        if container:
+            opts['container']=container
     return Global['current_client'].addProcess(processor_name,inputs,outputs,parameters,opts)
     #if not Global['current_client']:
     #    return Global['current_client'].addProcess(processor_name,inputs,outputs,parameters,opts)

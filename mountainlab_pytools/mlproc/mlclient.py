@@ -297,7 +297,10 @@ class MLClient:
     def _handle_process_output(self,P,job):
         start_time = time.time()
         while True:
-            output_stdout= P.stdout.readline().decode('utf-8')
+            try:
+                output_stdout= P.stdout.readline().decode('utf-8')
+            except Exception as e:
+                output_stdout='[decode error]'
             #output_stderr = P.stderr.read().decode('utf-8')
             output_stderr=''
             if (not output_stdout) and (not output_stderr):

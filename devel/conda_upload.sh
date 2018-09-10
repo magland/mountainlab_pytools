@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e
+
 hold="python devel/print_setup_py_data.py"
 
 PACKAGE_NAME=`$hold | jq -r '.name'`

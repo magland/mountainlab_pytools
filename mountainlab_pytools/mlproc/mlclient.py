@@ -134,7 +134,9 @@ class MLClient:
                 if job['status'] == 'running':
                     num_running=num_running+1
                 elif job['status'] == 'error':
-                    raise Exception('Error running process {}: {}'.format(job['processor_name'],job['error']))
+                    str='[Click to expand] Error running process {}: {}'.format(job['processor_name'],job['error'])
+                    display(vdom.details(vdom.summary(str),vdom.pre(job['console_output'])))
+                    raise Exception(str)
                 elif job['status'] == 'finished':
                     num_finished=num_finished+1
                 elif job['status'] == 'pending':

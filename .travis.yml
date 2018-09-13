@@ -1,0 +1,20 @@
+language: python
+os:
+- linux
+services:
+- docker
+python:
+- '3.6'
+install:
+- pip install .
+script: 'true'
+deploy:
+- provider: script
+  script: "./devel/travis_deploy.sh"
+  on:
+    tags: true
+  skip_cleanup: true
+env:
+  global:
+  - secure: F7tmw6UOGzvfdSXwjg9tqet/Wsc0UyM5vvPEtQ+dr8Mt5g8otfoMO6frq4WFIoLKLakVZSfCLTURP9y97sloNTfVuHyvkX1Jmmws/dslxk1hnwX02mvXaLhLGe0G9u1A26CDsUvMbG+hip+Gd/2rq7OkYgnGky1fubp8tw5CjL5wBzMK0WujBQPnOsUkiTUUvmOgdbFQM+VGuU819o1a1dsJebYL9BQ1cOwScpjNNljd+mbssDP/LvUf16PawpiR0y/2GaN13eKbQj20JkE5EZ0Rn8oBo7mToOtXu24vx6A7G6YB3Eor8/QbsGu34qwXfi7UNSD/+e4V35/F5Ktr0aqhTQeGDaf+SVKQckPDUTqAuG9HN+BV4HrYXlaKOmCPurSkPszeU2X84ftF/rvrgMnY13DRIM/SSgwu80dFtMuI6bM61igqc6jTDsQd3Cd/oWxOiurYffpABtr1IYvHU5zadOY3MuEjJ1KndXKP+FJkfV63Kd1/ympFs/9RYF1Ms0kh2+9Ni5Wx7JaGocK49QXVqmO/mNpdBHBOEiwK3H4JBlptk/bAP9Hy2oI0t/LE/eBuKWGJg0eYo8uJjBwMO1+zAvZnD31PodYN2WspR7H/H8B67ZydjNRlMGgQgn2YXIMnWBQAEihVKUTevbpd7EGXH2yRn759dn6xEw1ExBk=
+  - secure: fQlWyHJwrh2CYQ6eEnHr4TcMXykcDZBbbG8B8I+X+rSuCTq+OlLNRGXs0QzPyFMufognNEbx41Vp/eVJBiX3OEOOdAUvmrVEFg6nAxci8/r4x+XH4XifMjzG1nwU069QfO7AIE3Ms219aAZnx3+D7aKc/aU/WNbVq3x2OlekT0jlwtkBYoRhCivaHEX12bMvCvdrWHoepjIq2CAF1JI78lWq8BBn3sg7t5wuX56c99zN59ftKxbK5/dtB+jpcAWeAQJmvY2eg+IMFfHEbZlgASH58FE9tuz6lw280V7R13jU063M+5mKTuBhRYFPlJx4SOYuOXBQLjQC6URL93V6EnmP7+BTsYP6rPaHakcrFJ16oYcrlU0UEuNHGRVZOqQ+PNW591urlNEcpGyeAswqfv/B+2leVOwwWmg2LHSjlEVa8aFHsWPiAG3vFaJcOtq2lKRvIi+Nm5ot+SeDGKcqcSkxmjIv+k2HGwgErB6TqrUS9NE1Azx3kDH6X2E8tpfEQ3/T3Zg9e4FMEfA9QVh+q3rn/hmFDC+mJhje1vAObLCfx7SO78TViZ+ALxTuS3KE5z6TzCscLPfpQQau5PBoOnuHRcfL3f4NaLkaI9eFjitqOlQKD8RbMJ5u2xbdv/vqhnqO/Dp2T1pUbkYaLyCtjgbALsEbWh2o65pbFpj0R6Q=

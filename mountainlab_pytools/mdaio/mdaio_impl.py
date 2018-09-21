@@ -1,6 +1,8 @@
 import numpy as np
 import struct
 import os
+import requests
+import tempfile
 
 class MdaHeader:
     def __init__(self, dt0, dims0):
@@ -78,6 +80,9 @@ class DiskReadMda:
                 print ("Unable to support N1 {} != {}".format(N1,self.N1()))
                 return None
             X=self._read_chunk_1d(i1+N1*i2,N1*N2)
+            if X is None:
+                print ('Problem reading chunk from file: '+self._path)
+                return None
             if self._npy_mode:
                 A=np.load(self._path,mmap_mode='r')
                 return A[:,i2:i2+N2]
@@ -95,9 +100,20 @@ class DiskReadMda:
             X=self._read_chunk_1d(i1+N1*i2+N1*N2*i3,N1*N2*N3)
             return np.reshape(X,(N1,N2,N3),order='F')
     def _read_chunk_1d(self,i,N):
-        f=open(self._path,"rb")
+        offset=self._header.header_size+self._header.num_bytes_per_entry*i
+        if is_url(self._path):
+            tmp_fname=_download_bytes_to_tmpfile(self._path,offset,offset+self._header.num_bytes_per_entry*N)
+            try:
+                ret=self._read_chunk_1d_helper(tmp_fname,N,offset=0)
+            except:
+                ret=None
+            #os.remove(tmp_fname)
+            return ret
+        return self._read_chunk_1d_helper(self._path,N,offset=offset)
+    def _read_chunk_1d_helper(self,path0,N,*,offset):
+        f=open(path0,"rb")
         try:
-            f.seek(self._header.header_size+self._header.num_bytes_per_entry*i)
+            f.seek(offset)
             ret=np.fromfile(f,dtype=self._header.dt,count=N)
             f.close()
             return ret
@@ -105,6 +121,73 @@ class DiskReadMda:
             print (e)
             f.close()
             return None
+
+def is_url(path):
+    return path.startswith('http://') or path.startswith('https://')
+
+def _download_bytes_to_tmpfile(url,start,end):
+    headers = {"Range": "bytes={}-{}".format(start,end-1)}
+    r = requests.get(url, headers=headers, stream=True)
+    fd, tmp_fname = tempfile.mkstemp()
+    with open(tmp_fname, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=1024): 
+            if chunk:
+                f.write(chunk)
+    return tmp_fname
+        
+
+def _read_header(path):
+    if is_url(path):
+        tmp_fname=_download_bytes_to_tmpfile(path,0,200)
+        if not tmp_fname:
+            raise Exception('Problem downloading bytes from '+url)
+        try:
+            ret=_read_header(tmp_fname)
+        except:
+            ret=None
+        os.remove(tmp_fname)
+        return ret
+    
+    f=open(path,"rb")
+    try:
+        dt_code=_read_int32(f)
+        num_bytes_per_entry=_read_int32(f)
+        num_dims=_read_int32(f)
+        uses64bitdims=False
+        if (num_dims<0):
+            uses64bitdims=True
+            num_dims=-num_dims
+        if (num_dims<1) or (num_dims>6): # allow single dimension as of 12/6/17
+            print ("Invalid number of dimensions: {}".format(num_dims))
+            f.close()
+            return None
+        dims=[]
+        dimprod=1
+        if uses64bitdims:
+            for j in range(0,num_dims):
+                tmp0=_read_int64(f)
+                dimprod=dimprod*tmp0
+                dims.append(tmp0)
+        else:
+            for j in range(0,num_dims):
+                tmp0=_read_int32(f)
+                dimprod=dimprod*tmp0
+                dims.append(tmp0)
+        dt=_dt_from_dt_code(dt_code)
+        if dt is None:
+            print ("Invalid data type code: {}".format(dt_code))
+            f.close()
+            return None
+        H=MdaHeader(dt,dims)
+        if (uses64bitdims):
+            H.uses64bitdims=True
+            H.header_size=3*4+H.num_dims*8
+        f.close()
+        return H
+    except Exception as e: # catch *all* exceptions
+        print (e)
+        f.close()
+        return None
 
 def _dt_from_dt_code(dt_code):
     if dt_code == -2:
@@ -163,48 +246,6 @@ def readmda_header(path):
     if (file_extension(path)=='.npy'):
         raise Exception('Cannot read mda header for .npy file.')
     return _read_header(path)
-
-def _read_header(path):
-    f=open(path,"rb")
-    try:
-        dt_code=_read_int32(f)
-        num_bytes_per_entry=_read_int32(f)
-        num_dims=_read_int32(f)
-        uses64bitdims=False
-        if (num_dims<0):
-            uses64bitdims=True
-            num_dims=-num_dims
-        if (num_dims<1) or (num_dims>6): # allow single dimension as of 12/6/17
-            print ("Invalid number of dimensions: {}".format(num_dims))
-            f.close()
-            return None
-        dims=[]
-        dimprod=1
-        if uses64bitdims:
-            for j in range(0,num_dims):
-                tmp0=_read_int64(f)
-                dimprod=dimprod*tmp0
-                dims.append(tmp0)
-        else:
-            for j in range(0,num_dims):
-                tmp0=_read_int32(f)
-                dimprod=dimprod*tmp0
-                dims.append(tmp0)
-        dt=_dt_from_dt_code(dt_code)
-        if dt is None:
-            print ("Invalid data type code: {}".format(dt_code))
-            f.close()
-            return None
-        H=MdaHeader(dt,dims)
-        if (uses64bitdims):
-            H.uses64bitdims=True
-            H.header_size=3*4+H.num_dims*8
-        f.close()
-        return H
-    except Exception as e: # catch *all* exceptions
-        print (e)
-        f.close()
-        return None
 
 def _write_header(path,H,rewrite=False):
     if rewrite:

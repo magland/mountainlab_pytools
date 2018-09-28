@@ -4,7 +4,7 @@ pkg_name="mountainlab_pytools"
 
 setuptools.setup(
     name=pkg_name,
-    version="0.7.1",
+    version="0.7.2",
     author="Jeremy Magland",
     author_email="jmagland@flatironinstitute.org",
     description="Tools for using MountainLab with python",

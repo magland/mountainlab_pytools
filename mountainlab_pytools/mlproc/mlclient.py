@@ -91,7 +91,7 @@ class MLClient:
             'inputs':inputs,
             'outputs':outputs,
             'parameters':parameters,
-            'opts':opts2,
+            'opts':opts2
         }
         JJ['input_files']=self.flatten_iops(inputs)
         JJ['output_files']=self.flatten_iops(outputs)
@@ -261,14 +261,15 @@ class MLClient:
       ret = {}
       for key in X:
         val = X[key]
-        if type(val) == list:
-          for i in range(len(val)):
-            ret[val[i]]=True
-        elif type(val) == dict:
-          for i in val:
-            ret[val[i]]=True
-        else:
-          ret[val] = True
+        if val is not None:
+            if type(val) == list:
+              for i in range(len(val)):
+                ret[val[i]]=True
+            elif type(val) == dict:
+              for i in val:
+                ret[val[i]]=True
+            else:
+              ret[val] = True
           
       return ret
 

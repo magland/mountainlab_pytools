@@ -3,7 +3,6 @@ import json
 import shlex
 import subprocess
 import hashlib
-from IPython.core.display import display, HTML
 from .mlclient import MLClient
 from threading import Timer
 import ipywidgets as widgets
@@ -64,6 +63,7 @@ def _get_container_for_processor_name(processor_name):
 def addProcess(processor_name, inputs=None, outputs=None, parameters=None, opts=None):
     if not opts:
         opts=dict()
+
     if 'container' not in opts:
         container=_get_container_for_processor_name(processor_name)
         if container:
@@ -268,6 +268,7 @@ class _MLProcessor:
             else:
                 cmd=cmd+' --{}={}'.format(optname,val)
         if opts.get('verbose','') == 'jupyter':
+            from IPython.core.display import display, HTML
             display(HTML('<span class=ml_job processor_name="{}">JOB({})</span>'.format(self.name,self.name)));
         else:
             print ('RUNNING: '+cmd)
@@ -337,8 +338,10 @@ def locateFile(X,download=False,remote_only=False):
         if download:
             opts=opts+'--download '
         if remote_only:
-            opts=opts+'--remote_only'
-        path=os.popen('ml-prv-locate {} {}'.format(X,opts)).read().strip()
+            opts=opts+'--remote_only '
+        cmd='ml-prv-locate {} {}'.format(X,opts)
+        with os.popen(cmd) as pp:
+            path=pp.read().strip()
         if not path:
             raise Exception('Unable to locate file: {}'.format(X))
         return path

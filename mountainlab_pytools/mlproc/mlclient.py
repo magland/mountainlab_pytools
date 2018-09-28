@@ -3,13 +3,10 @@ from subprocess import Popen, PIPE
 import random
 import traceback
 import os
-import ipywidgets as widgets
 import vdom
 import copy
-from IPython.core.display import HTML
 from threading import Timer
 from threading import Thread
-import IPython
 import subprocess
 import json
 from .mljobmonitor import MLJobMonitor

@@ -5,7 +5,6 @@ import subprocess
 import hashlib
 from .mlclient import MLClient
 from threading import Timer
-import ipywidgets as widgets
 import os, getpass
 from fnmatch import fnmatch
 

@@ -28,9 +28,9 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ),
     conda={
-        "build_number":0,
+        "build_number":1,
         "build_script":[
-            "python -m pip install vdom jp_proxy_widget",
+            "python -m pip install --no-deps --ignore-installed vdom jp_proxy_widget",
             "python -m pip install --no-deps --ignore-installed .",
             "echo $CMD",
             "$CMD"
@@ -41,7 +41,9 @@ setuptools.setup(
             "mountainlab_pytools",
             "mountainlab_pytools.mlproc",
             "mountainlab_pytools.mdaio",
-            "mountainlab_pytools.processormanager"
+            "mountainlab_pytools.processormanager",
+            "vdom",
+            "jp_proxy_widget"
         ],
         "requirements":[
             "python",
@@ -50,7 +52,8 @@ setuptools.setup(
             "numpy",
             "numpydoc",
             "ipython",
-            "ipywidgets"
+            "ipywidgets>=7.0.0",
+            "jsonschema"
         ]
     }
 )

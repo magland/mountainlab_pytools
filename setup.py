@@ -4,7 +4,7 @@ pkg_name="mountainlab_pytools"
 
 setuptools.setup(
     name=pkg_name,
-    version="0.7.3",
+    version="0.7.4",
     author="Jeremy Magland",
     author_email="jmagland@flatironinstitute.org",
     description="Tools for using MountainLab with python",
@@ -28,7 +28,7 @@ setuptools.setup(
         "Operating System :: OS Independent",
     ),
     conda={
-        "build_number":1,
+        "build_number":0,
         "build_script":[
             "python -m pip install --no-deps --ignore-installed vdom jp_proxy_widget",
             "python -m pip install --no-deps --ignore-installed .",
@@ -46,6 +46,7 @@ setuptools.setup(
             "jp_proxy_widget"
         ],
         "requirements":[
+            "mountainlab",
             "python",
             "pip",
             "requests",

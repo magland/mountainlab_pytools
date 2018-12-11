@@ -9,6 +9,7 @@ from threading import Timer
 from threading import Thread
 import subprocess
 import json
+from ipywidgets import widgets
 from .mljobmonitor import MLJobMonitor
 import tempfile
             
